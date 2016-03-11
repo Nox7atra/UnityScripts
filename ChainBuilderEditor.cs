@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using UnityEditor;
-using VampLamp.Core.Obstacles.Chain;
+using VampLamp.Core.Builders;
 
 [CustomEditor(typeof(ChainBuilder))]
 public class ChainBuilderEditor : Editor
