@@ -34,7 +34,8 @@ namespace VampLamp.EditorTools.ObstaclesTools
             {
                 _IsInitialized = _IsInitialized && _LogPrefab != null &&
                     _MountPrefab != null && _FirstLinkPrefab != null &&
-                    _SecondLinkPrefab != null;
+                    _SecondLinkPrefab != null && _LampPrefab != null &&
+                    _SwitcherPrefab != null;
                 return _IsInitialized;
             }
         }
