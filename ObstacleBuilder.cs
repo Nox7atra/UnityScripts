@@ -19,17 +19,16 @@ namespace VampLamp.EditorTools.ObstaclesTools
         private const float LOG_MOUNT_JOINT_ANCHOR_Y = 0.9f;
         #endregion
         #region private properties
-        [SerializeField]
         private static GameObject _LogPrefab;
-        [SerializeField]
         private static GameObject _MountPrefab;
-        [SerializeField]
         private static GameObject _FirstLinkPrefab;
-        [SerializeField]
         private static GameObject _SecondLinkPrefab;
-       
+        private static GameObject _LampPrefab;
+        private static GameObject _SwitcherPrefab;
+
+        private static Core.Events.TouchEventsManager _TouchEventManager;
         private static bool _IsInitialized = false;
-        #endregion
+     
         private static bool IsInitialized {
             get
             {
@@ -39,7 +38,14 @@ namespace VampLamp.EditorTools.ObstaclesTools
                 return _IsInitialized;
             }
         }
-        public static void Init()
+        #endregion
+        public enum ObstacleType
+        {
+            Lamp,
+            Log,
+            Switcher
+        }
+        private static void Init()
         {
             if (IsInitialized)
             {
@@ -50,15 +56,79 @@ namespace VampLamp.EditorTools.ObstaclesTools
             _MountPrefab      = Resources.Load(EditorPathConstants.MountPrefabPath)      as GameObject;
             _FirstLinkPrefab  = Resources.Load(EditorPathConstants.FirstLinkPrefabPath)  as GameObject;
             _SecondLinkPrefab = Resources.Load(EditorPathConstants.SecondLinkPrefabPath) as GameObject;
-
+            _LampPrefab       = Resources.Load(EditorPathConstants.LampPrefabPath)       as GameObject;
+            _SwitcherPrefab   = Resources.Load(EditorPathConstants.SwitcherPrefabPath)   as GameObject;
             _IsInitialized = true;
         }
 
-        public static void CreateChain(GameObject targetRoot, int length, float angle = 0)
+        public static void CreateObstacle(ObstacleType type)
         {
             Init();
+            switch (type)
+            {
+                case ObstacleType.Log:
+                    CreateLogObstacle();
+                    break;
+                case ObstacleType.Lamp:
+                    CreateLamp();
+                    break;
+                case ObstacleType.Switcher:
+                    CreateSwitcher();
+                    break;
+            }
+        }
+        private static void CreateLogObstacle()
+        {
+            _TouchEventManager = MonoBehaviour.FindObjectOfType(typeof(Core.Events.TouchEventsManager)) as Core.Events.TouchEventsManager;
+            if(_TouchEventManager == null)
+            {
+                Debug.Log("На сцене нет event manager. Верните!");
+                return;
+            }
+            GameObject root = new GameObject();
+            root.name = "LogObstacle";
+            //Instantiate prefabs
+            GameObject logObj      = GameObject.Instantiate(_LogPrefab);
+            Log logScript          = logObj.GetComponent<Log>();
+            logObj.transform.SetParent(root.transform);
 
-            BuildChain(targetRoot, length, angle);
+            GameObject[] chains = new GameObject[logScript.Mounts.Length];
+            GameObject[] mounts = new GameObject[logScript.Mounts.Length];
+            for(int i = 0; i < logScript.Mounts.Length; i++)
+            {
+                mounts[i] = GameObject.Instantiate(_MountPrefab);
+                mounts[i].name = "Mount" + (i + 1).ToString();
+                mounts[i].transform.position += Vector3.right * 2f * i;
+                mounts[i].transform.SetParent(root.transform);
+
+                chains[i] = new GameObject();
+                chains[i].name = "Chain" + (i + 1).ToString();
+                CreateLogChain(chains[i], mounts[i], logScript.Mounts[i].gameObject);
+                chains[i].transform.SetParent(root.transform);
+            }
+            _TouchEventManager = null;
+        }
+        private static void CreateLamp()
+        {
+            GameObject.Instantiate(_LampPrefab);
+        }
+        private static void CreateSwitcher()
+        {
+            GameObject.Instantiate(_SwitcherPrefab);
+        }
+        private static void CreateLogChain(GameObject targetRoot, GameObject beginMount, GameObject endMount)
+        {
+            Vector3 chainBegin = beginMount.transform.position,
+             chainEnd = endMount.transform.position + Vector3.up * LINK_LENGHT / 2;
+
+            BuildChain(targetRoot, CalcChainLength(chainBegin, chainEnd), CalcChainAngle(chainBegin, chainEnd));
+
+            var chain = targetRoot.GetComponent<Chain>();
+            AttachChain(chain, beginMount, endMount);
+            chain.BeginMount = beginMount;
+            chain.EndMount = endMount;
+
+            targetRoot.transform.position = beginMount.transform.position;
         }
         private static void BuildChain(GameObject targetRoot, int length, float angle)
         {
@@ -83,6 +153,7 @@ namespace VampLamp.EditorTools.ObstaclesTools
                 {
                     targetRoot.AddComponent<Chain>().FirtsLink = instantiatedLink;
                 }
+                instantiatedLink.GetComponent<Link>().TouchEventManager = _TouchEventManager;
                 instantiatedLink.transform.SetParent(targetRoot.transform);
                 previousInstantiatedLink = instantiatedLink;
             }
@@ -108,48 +179,6 @@ namespace VampLamp.EditorTools.ObstaclesTools
                 joint.connectedAnchor = new Vector2(MOUNT_JOINT_ANCOR_X, -MOUNT_JOINT_ANCOR_Y);
                 instantiatedLink.transform.position = new Vector3(-MOUNT_JOINT_ANCOR_X, -MOUNT_JOINT_ANCOR_Y * 2);
             }
-        }
-        public static void CreateLogObstacle(GameObject targetRoot)
-        {
-            Init();
-
-            BuildLogObstacle(targetRoot);
-        }
-        private static void BuildLogObstacle(GameObject targetRoot)
-        {
-            //Instantiate prefabs
-            GameObject firstChain  = new GameObject();
-            GameObject secondChain = new GameObject();
-            GameObject logObj      = GameObject.Instantiate(_LogPrefab);
-            GameObject firstMount  = GameObject.Instantiate(_MountPrefab);
-            GameObject secondMount = GameObject.Instantiate(_MountPrefab);
-
-            Log logScript          = logObj.GetComponent<Log>();
-            //Rename some 
-            firstChain.name  = "FirstChain";
-            secondChain.name = "SecondChain";
-            firstMount.name  = "FirstMount";
-            secondMount.name = "SecondMount";
-            //Change posititon of mounts
-            firstMount.transform.position  += Vector3.left  * 2f;
-            secondMount.transform.position += Vector3.right * 2f;
-            //Create chains
-            CreateLogChain(firstChain,  firstMount,  logObj.GetComponent<Log>().FirstMount.gameObject);
-            CreateLogChain(secondChain, secondMount, logObj.GetComponent<Log>().SecondMount.gameObject);
-            //Pack gameobjects into targetRoot gameobject
-            firstChain.transform.SetParent(targetRoot.transform);
-            secondChain.transform.SetParent(targetRoot.transform);
-            firstMount.transform.SetParent(targetRoot.transform);
-            secondMount.transform.SetParent(targetRoot.transform);
-            logObj.transform.SetParent(targetRoot.transform); 
-        }
-        private static void CreateLogChain(GameObject targetRoot, GameObject firstMount, GameObject secondMount)
-        {
-            Vector3 chainBegin = firstMount.transform.position,
-            chainEnd = secondMount.transform.position + Vector3.up * LINK_LENGHT / 2;
-            BuildChain(targetRoot, CalcChainLength(chainBegin, chainEnd), CalcChainAngle(chainBegin, chainEnd));
-            AttachChain(targetRoot.GetComponent<Chain>(), firstMount, secondMount);
-            targetRoot.transform.position = firstMount.transform.position;
         }
         public static void AttachChain(Chain chain, GameObject firstMount, GameObject secondMount)
         {
