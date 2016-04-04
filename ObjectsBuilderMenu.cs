@@ -6,7 +6,7 @@ using VampLamp.EditorTools.ObstaclesTools;
 public class ObjectsBuilderMenu : EditorWindow
 {
     private string[] _ObjectType = new string[] {
-        "Obstacle",
+        "Interactive",
         "Decoration"
     };
 
@@ -44,41 +44,28 @@ public class ObjectsBuilderMenu : EditorWindow
         {
             padding = new RectOffset(0, 0, 10, 0)
         });
-        bool isCreateLogObstacle = GUILayout.Button("Create Log Obstacle", EditorGUIStyles.ButtonStyle);
         EditorGUILayout.EndHorizontal();
 
-        EditorGUILayout.BeginHorizontal();
-        bool isCreateLamp        = GUILayout.Button("Create Lamp",         EditorGUIStyles.ButtonStyle);
-        EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.BeginHorizontal();
-        bool isCreateSwitcher    = GUILayout.Button("Create Switcher",     EditorGUIStyles.ButtonStyle);
-        EditorGUILayout.EndHorizontal();
-
-        if (isCreateLogObstacle)
-        {
-            ObstacleBuilder.CreateObstacle(ObstacleBuilder.ObstacleType.Log);
-        }
-        if (isCreateLamp)
-        {
-            ObstacleBuilder.CreateObstacle(ObstacleBuilder.ObstacleType.Lamp);
-            var eventManager = FindObjectOfType(typeof(VampLamp.Core.Events.ReachedEventManager)) as VampLamp.Core.Events.ReachedEventManager;
-            if(eventManager != null)
-            {
-                eventManager.FindAllLightsInScene();
-            }
-            else
-            {
-                Debug.Log("Протерялся ивент менеджер. Верните!");
-            }
-        }
-        if (isCreateSwitcher)
-        {
-            ObstacleBuilder.CreateObstacle(ObstacleBuilder.ObstacleType.Switcher);
-        }
+        CreateObstacleGUIButton("Create Log",        ObstacleBuilder.ObstacleType.Log);
+        CreateObstacleGUIButton("Create Lamp",       ObstacleBuilder.ObstacleType.Lamp);
+        CreateObstacleGUIButton("Create Switcher",   ObstacleBuilder.ObstacleType.Switcher);
+        CreateObstacleGUIButton("Create WallSquare", ObstacleBuilder.ObstacleType.WallSquare);
+        CreateObstacleGUIButton("Create WallCircle", ObstacleBuilder.ObstacleType.WallCircle);
+        CreateObstacleGUIButton("Create WoodenBox",  ObstacleBuilder.ObstacleType.WoodenBox);
     }
     private void UseDecorationGUI()
     {
 
+    }
+
+    private void CreateObstacleGUIButton(string name, ObstacleBuilder.ObstacleType type)
+    {
+        EditorGUILayout.BeginHorizontal();
+        bool isButtonPressed = GUILayout.Button(name, EditorGUIStyles.ButtonStyle);
+        EditorGUILayout.EndHorizontal();
+        if (isButtonPressed)
+        {
+            ObstacleBuilder.CreateObstacle(type);
+        }
     }
 }
